@@ -7,8 +7,11 @@ var svg = d3.select('#chart-area').append("svg")
     .attr("width", GRAPH_WIDTH + margin.left + margin.right)
     .attr("height", GRAPH_HEIGHT + margin.top + margin.bottom);
 
+//global variables and constants
 const FIRST_YEAR = 1800;
-var index = 0;
+var index = 0; //tracks which year is currently being looked at
+var formattedData; //variable which stores all the data with no null values/negative numbers
+var interval;
 
 
 var g = svg.append("g")
@@ -43,8 +46,6 @@ var yAxisCall = d3.axisLeft(yScale)
 
 yAxisGroup.call(yAxisCall)
 xAxisGroup.call(xAxisCall)
-
-
 
 //x label
 g.append("text")
@@ -98,7 +99,7 @@ continents.forEach(function(continent, i){
 d3.json("data/data.json").then(function(data){
 
     //remove null values and make sure all income and life_exp values are positive
-    const formattedData = data.map(function(year){
+    formattedData = data.map(function(year){
         return year["countries"].filter(function(country){
             var dataExists = (country.income && country.life_exp);
             return dataExists
@@ -111,24 +112,48 @@ d3.json("data/data.json").then(function(data){
 
     //run visualisation for first time
     update(formattedData[index])
-    d3.interval(function(){
-        index++;
-        if(index == 216)
-            index = 0;
-        update(formattedData[index])
-
-    }, 200)
 })
 
+//jquery for when play button is clicked
+//changes text to Pause/Play
+//uses setInterval and clearInterval to start/stop the step function
+$("#play-button").on("click", function(){
+    if($(this).text() === "Play"){
+        $(this).text("Pause");
+        interval = setInterval(step, 100);
+    }
+    else{
+        $(this).text("Play");
+        clearInterval(interval);
+    }
+})
+
+//when the Reset button is clicked, index is set to 0,
+//meaning the current year being displayed will be FIRST_YEAR
+$("#reset-button").on("click", function(){
+    index = 0;
+})
+//runs when you click play button
+//updates and displays data
+function step(){
+    index++;
+    if(index == 216)
+        index = 0;
+    update(formattedData[index])
+}
 
 function update(data){
     var myTransition = d3.transition().duration(100);
-    //filter all null income, population, and life_exp values
-    // var countries = data.countries.filter(x => x.income !== null)
-    // countries = countries.filter(x => x.population !== null)
-    // countries = countries.filter(x => x.life_exp !== null)
-    // // countries = countries.filter(x => x.population = +x.population)
-    // // countries = countries.filter(x => x.life_exp = +x.life_exp)
+
+    //filter data based on continent dropdown menu
+    var continent = $("#continent-select").val()
+
+    data = data.filter(function(d){
+        if(continent === "all") return true;
+        else return d.continent === continent;
+    })
+
+
     //join new data
     var circles = g.selectAll("circle").data(data, function(d){
         return d.country
